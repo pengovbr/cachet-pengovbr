@@ -1,0 +1,78 @@
+services:
+
+  cachet-app:
+    image: cachet:1
+    container_name: cachet-app
+    tty: true
+    environment:
+      SERVICE_NAME: cachet-app
+      SERVICE_TAGS: dev
+    working_dir: /var/www/html
+    ports:
+      - "8080:80"
+    volumes:
+      - cachet-storage:/var/www/html/storage
+      - ./.env:/var/www/html/.env
+    networks:
+      - cachet-network
+    restart: unless-stopped
+
+  cachet-queue-worker:
+    image: cachet:1
+    container_name: cachet-queue-worker
+    tty: true
+    environment:
+      SERVICE_NAME: cachet-queue-worker
+      SERVICE_TAGS: dev
+    working_dir: /var/www/html
+    volumes:
+      - cachet-storage:/var/www/html/storage
+      - ./.env:/var/www/html/.env
+    networks:
+      - cachet-network
+    command: php artisan queue:work --queue=default --sleep=3 --tries=3 --max-time=3600
+    restart: unless-stopped
+
+  cachet-scheduler-worker:
+    image: cachet:1
+    container_name: cachet-scheduler-worker
+    tty: true
+    environment:
+      SERVICE_NAME: cachet-scheduler-worker
+      SERVICE_TAGS: dev
+    working_dir: /var/www/html
+    volumes:
+      - cachet-storage:/var/www/html/storage
+      - ./.env:/var/www/html/.env
+    networks:
+      - cachet-network
+    command: php artisan schedule:work
+    restart: unless-stopped
+
+  mariadb:
+    container_name: cachet-mariadb
+    image: mariadb:lts
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+      start_period: 10s
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - cachet-mariadb-storage:/var/lib/mysql
+    networks:
+      - cachet-network
+
+volumes:
+  cachet-storage:
+    name: cachet-storage
+  cachet-mariadb-storage:
+    name: cachet-mariadb-storage
+
+networks:
+  cachet-network:
+    name: cachet-network
+    driver: bridge
