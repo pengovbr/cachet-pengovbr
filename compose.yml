@@ -1,7 +1,8 @@
 services:
 
   cachet-app:
-    image: cachet:1
+    build:
+      context: ./containers/cachet
     container_name: cachet-app
     tty: true
     environment:
@@ -18,7 +19,8 @@ services:
     restart: unless-stopped
 
   cachet-queue-worker:
-    image: cachet:1
+    build:
+      context: ./containers/cachet
     container_name: cachet-queue-worker
     tty: true
     environment:
@@ -34,7 +36,8 @@ services:
     restart: unless-stopped
 
   cachet-scheduler-worker:
-    image: cachet:1
+    build:
+      context: ./containers/cachet
     container_name: cachet-scheduler-worker
     tty: true
     environment:
