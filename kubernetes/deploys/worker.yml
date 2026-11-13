@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    workload.user.cattle.io/workloadselector: apps.deployment-cachet-worker
+  name: worker
+  namespace: cachet
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 0
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      workload.user.cattle.io/workloadselector: apps.deployment-cachet-worker
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        workload.user.cattle.io/workloadselector: apps.deployment-cachet-worker
+      namespace: cachet
+    spec:
+      containers:
+        - args:
+            - php
+            - artisan
+            - queue:work
+            - '--queue=default'
+            - '--sleep=3'
+            - '--tries=3'
+            - '--max-time=3600'
+          env:
+            - name: SERVICE_NAME
+              value: cachet-queue-worker
+            - name: SERVICE_TAGS
+              value: production
+          envFrom:
+            - configMapRef:
+                name: cm-cachet
+                optional: false
+            - secretRef:
+                name: se-cachet
+                optional: false
+          image: ghcr.io/pengovbr/cachet-pengovbr:1.0.0
+          imagePullPolicy: Always
+          name: container-0
+          resources: {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /var/www/html/storage
+              name: vol-cachet-storage
+              subPath: storage
+          workingDir: /var/www/html
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: vol-cachet-storage
+          persistentVolumeClaim:
+            claimName: vol-cachet-storage
